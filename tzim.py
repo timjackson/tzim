@@ -1,89 +1,49 @@
 #!/usr/bin/python3
-#################################################################################################
-#                                                                                               #
-# tzim.py - Simple conversion module to convert a Tomboy/Gnote notes to zim notes.              #
-#                                                                                               #
-#           _Usage_:                                                                            #
-#           If not already executable,                                                          #
-#           $ chmod a+x tzim.py                                                                 #
-#           Run                                                                                 #
-#           $ <dir-path to tzim.py>/tzim.py                                                     #
-#           follow instructions. When conversed, open zim and add repository (i.e. target dir)  #
-#                                                                                               #
-#                                                                                               #
-#           GPL statement:                                                                      #
-#           This program is free software; you can redistribute it and/or modify                #
-#           it under the terms of the GNU General Public License as published by                #
-#           the Free Software Foundation; either version 3 of the License, or                   #
-#           (at your option) any later version.                                                 #
-#                                                                                               #
-#           This program is distributed in the hope that it will be useful,                     #
-#           but WITHOUT ANY WARRANTY; without even the implied warranty of                      #
-#           MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                       #
-#           GNU General Public License for more details.                                        #
-#                                                                                               #
-#           You should have received a copy of the GNU General Public License                   #
-#           along with this program.  If not, see <http://www.gnu.org/licenses/>.               #
-#                                                                                               #
-#           Copyright 2007,2008 Bengt J. Olsson                                                 #
-#           Copyright 2020      Osamu Aoki                                                      #
-#                                                                                               #
-# Rev:      1.2.1-oa01                                                                          #
-# Date:     2020-06-13  (OA)                                                                    #
-# Changes:  Updated to python3 and adjust default behavior to modern path choices               #
-#   (original from https://github.com/jaap-karssenberg/zim-wiki/wiki/Tomboy-import-script)      #
-#   (original upstream URL http://blafs.com/diverse.html was unreachable)                       #
-#                                                                                               #
-# Rev:      1.2.1                                                                               #
-# Date:     2008-03-25                                                                          #
-# Changes:  Corrected typo in dialog. Translates tomboy's monospace to zim verbatim             #
-# Rev:      1.2                                                                                 #
-# Date:     2008-03-24                                                                          #
-# Changes:  Much revised code. Should be more robust against Tomboy note format now. Also added #
-#           support for the new "Notebooks" concept (i.e. two-level name-spaces)                #
-# Rev:      1.1                                                                                 #
-# Date:     2008-03-08                                                                          #
-# Changes:  Fixed an issue when Create date on tomboy note does not exist. Now displays both    #
-#           "Last changed" and "Create date" (if these exists) and conversion date. Fixed       #
-#           various issues with that could hang the script. Added a few character subs.         #
-# Filename: tzim.py                                                                             #
-# Rev:      1.0                                                                                 #
-# Date:     2007-07-28                                                                          #
-# Changes:  First version                                                                       #
-#################################################################################################
+
+# tzim.py - Simple conversion module to convert a Tomboy/Gnote notes to zim notes.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright 2007,2008 Bengt J. Olsson 
+# Copyright 2020      Osamu Aoki
+# Copyright 2021      Tim Jackson
+
 import os
 import os.path
 import sys
 import glob
 import re
-
+import argparse
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Convert Gnote/Tomboy notes to Zim')
+    parser.add_argument('--source-dir', help='Gnote/Tomboy source directory', required=True)
+    parser.add_argument('--dest-dir', help='Zim destination directory', required=True)
+    args = parser.parse_args()
+
+    # Fix up source/dest paths
     home = os.path.expanduser("~")
-    tomboynotes = input("Path to gnote/tomboy notes directory (blank for default path): ")
-    tomboynotes = tomboynotes.rstrip()
-    if tomboynotes == "":
-        if os.path.exists(home + "/.local/share/gnote"):
-            # modern choice for gnote
-            tomboynotes = home + "/.local/share/gnote"
-        elif os.path.exists(home + "/.local/share/tomboy"):
-            # modern choice for tomboy
-            tomboynotes = home + "/.local/share/tomboy"
-        elif os.path.exists(home + "/.tomboy"):
-            # historic for tomboy
-            tomboynotes = home + "/.tomboy"
-        else:
-            # current
-            tomboynotes = "."
-    tomboynotes = os.path.realpath(os.path.expanduser(tomboynotes))
+    tomboynotes = os.path.realpath(os.path.expanduser(args.source_dir))
     if not tomboynotes[-1] == "/":
         tomboynotes += "/"
-    print("***** Reading gnote/tomboy notes from: ", tomboynotes, " *****")
+    print("Reading Gnote/Tomboy notes from: ", tomboynotes)
     files = glob.glob(tomboynotes + "*.note")  # Read tomboy notes file names
     if len(files) == 0:
         print("No note files.")  # Exit if no note files in directory
         sys.exit()
-    zimnotes = input("Path to zim notes directory (blank for current directory): ")
+    zimnotes = args.dest_dir
     zimnotes = zimnotes.rstrip()
     if zimnotes == "":
         # current
@@ -94,83 +54,74 @@ def main():
     if zimnotes == tomboynotes:
         # avoid overlapping directory
         zimnotes += "zim/"
-    print("***** Writing zim notes to: ", zimnotes, " *****")
+    print("Writing Zim notes to: ", zimnotes)
     if not os.path.exists(zimnotes):
-        os.mkdirs(zimnotes)
+        os.mkdir(zimnotes)
     elif os.listdir(zimnotes):
-        print(" ---- some files exist in ", zimnotes, " ----")
-    answer = input("Continue [Yes/no]? ").lower()
-    if answer != "" and answer[0] != "y":
-        sys.exit()
+        print("  INFO: Some files exist in ", zimnotes)
+    
     curdir = os.getcwd()
     os.chdir(zimnotes)
-    for fil in files:
-        infile = open(fil, "r")
+    
+    # Do the conversion
+    errors = 0
+    for file in files:
+        print("Converting: ", os.path.basename(file))
+    
+        infile = open(file, "r")
         longline = infile.read()
         infile.close()
 
-        # --- Match note title --------------------------------------------------------
-        match = re.search(r".*<title>(.*)</title>", longline, re.S)
-        if match:
-            title = format(match.group(1))
-            print("***** Converting:", title, "*****")
-        else:
-            print("Title: note title could not be found")
+        import xml.etree.ElementTree as ET
+        try:
+            root = ET.fromstring(longline)
+        except:
+            print("  ERROR: Could not parse note (invalid file?)")
+            errors += 1
+        
+        if root.attrib['version'] not in ["0.2", "0.3"]:
+            print("  WARNING: only tested with Tomboy note version 0.2 and 0.3 (found " + root.attrib['version'] +")")
+        
+        text = ''
+        title = 'Untitled'
+        last_change_date = 'Not found'
+        create_date = 'Not found'
+        folder = ''
+        
+        for element in root:
+            if element.tag == '{http://beatniksoftware.com/tomboy}text':
+                text = parse_content(element)
+            elif element.tag == '{http://beatniksoftware.com/tomboy}title':
+                title = element.text
+            elif element.tag == '{http://beatniksoftware.com/tomboy}last-change-date':
+                last_change_date = element.text
+                match = re.search(r'(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})', last_change_date)
+                if match:
+                    last_change_date = match.group(1) + " " + match.group(2)
+            elif element.tag == '{http://beatniksoftware.com/tomboy}create-date':
+                create_date = element.text
+                match = re.search(r'(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})', create_date)
+                if match:
+                    create_date = match.group(1) + " " + match.group(2)
+            elif element.tag == '{http://beatniksoftware.com/tomboy}tags':
+                tag = element.find('.//{http://beatniksoftware.com/tomboy}tag')
+                if tag is not None:
+                    match = re.search("system:notebook:(.+)$", str(tag.text), re.S)
+                    if match:
+                        folder = match.group(1)      
+                        print(" Filing in folder: " + folder)
+                    else:
+                        # might be system:template
+                        pass
 
-        # --- Match tomboy note format versions ---------------------------------------
-        match = re.search(r'.*<note version="(\d+\.\d+)"', longline, re.S)
-        if match:
-            if match.group(1) not in ["0.2", "0.3"]:
-                print("Version: only tested with Tomboy note version 0.2 and 0.3")
-        else:
-            print("Version: Tomboy note version could not be found")
+        if title == "Untitled":
+            print ("  ERROR: Could not find note title")
+            sys.exit()
 
-        # --- Match note text ---------------------------------------------------------
-        match = re.search(
-            r".*<note-content.*?>.*?\n(.*)</note-content>", longline, re.S
-        )
-        # ^^^^ to avoid title repeat itself
-        if match:
-            text = format(match.group(1))
-        else:
-            print("Text: note text could not be found")
-            text = "*** No text found in tomboy note ***"
-
-        # --- Match last-change text --------------------------------------------------
-        match = re.search(
-            r".*<last-change-date>(\d\d\d\d-\d\d-\d\d).*</last-change-date>",
-            longline,
-            re.S,
-        )
-        if match:
-            last_change_date = match.group(1)
-        else:
-            last_change_date = "Not found"
-            print("last-change-date: could not be found")
-
-        # --- Match create-change text ------------------------------------------------
-        match = re.search(
-            r".*<create-date>(\d\d\d\d-\d\d-\d\d).*</create-date>", longline, re.S
-        )
-        if match:
-            create_date = match.group(1)
-        else:
-            create_date = "Not found"
-            print("create-date: could not be found")
-
-        # --- Match folder (tomboy version > 0.3) -------------------------------------
-        # 2018-07-28: vrubiolo: non-greedy modifier for '+' is here to support nested tags
-        # (too much is matched otherwise and the potential mkdir() below for folder creation fails)
-        match = re.search(r".*<tag>system:notebook:(.+?)</tag>", longline, re.S)
-        if match:
-            folder = match.group(1)
-        else:
-            folder = ""
-
-        # --- Put together zim note ---------------------------------------------------
+        # Put together Zim note
         outname = title
         outname = re.sub("[/&<>:; ]", "_", outname)  # removing "dangerous" chars
-        outname += ".txt"  # zim file name for note
+        outname += ".txt"  # Zim file name for note
         if folder != "":
             if not os.path.exists(folder):
                 os.mkdir(folder)
@@ -182,34 +133,90 @@ def main():
         line += "Note created (in Tomboy/Gnote): " + create_date + "\n"
         outfile.write(line)
         outfile.close()
-    print("\n" + "Conversion OK!")
+    print("\nConversion complete (with " + str(errors) + " error(s))")
+    
     os.chdir(curdir)
-
 
 # ------------------------------------------------------------------------------
 
+def parse_content(textelement):
+    note_content = textelement.find('.//{http://beatniksoftware.com/tomboy}note-content')
+    output = ""
+    
+    if note_content is None:
+        print("Could not find note content")
+        sys.exit()
+    
+    # Strip first line, which is a repeat of the note title
+    if note_content.text is not None:
+        leading_text = re.sub(r'^.+\n', '', str(note_content.text))
+        output = str(leading_text)
 
-def format(line):  # various format substitutions of lines
-    line = re.sub("</?bold>", "**", line)
-    line = re.sub("</?italic>", "//", line)
-    line = re.sub("</?strikethrough>", "~~", line)
-    line = re.sub("</?highlight>", "__", line)
-    line = re.sub("</?size:(small|large|huge)>", "", line)  # Can't handle tomboy sizes
-    line = re.sub("</?monospace>", "''", line)
-    line = re.sub("<link:(internal|broken)>", "[[", line)
-    line = re.sub("</link:(internal|broken)>", "]]", line)
-    line = re.sub("<link:(url)>", "", line)
-    line = re.sub("</link:(url)>", "", line)
-    line = re.sub(
-        '<list-item dir="ltr">', "* ", line
-    )  # List handling in tomboy to complexfor this
-    line = re.sub(
-        "(</?list>|</list-item>)", "", line
-    )  # this simple converter; generating a one-level
-    line = re.sub("&gt;", ">", line)  # list only
-    line = re.sub("&lt;", "<", line)
-    line = re.sub("&amp;", "&", line)
-    return line
+    output += iterate_elements(note_content)
 
+    if note_content.tail is not None:
+        output += str(note_content.tail)
+
+    return output
+    
+    
+def iterate_elements(e, output="", depth=0):
+    for element in e:
+        if element.tag == '{http://beatniksoftware.com/tomboy}list':
+            output = iterate_elements(element, output, depth+1)
+            if element.tail is not None:
+                output += str(element.tail)
+        elif element.tag == '{http://beatniksoftware.com/tomboy}list-item':
+            output += "\t" * depth + "* "
+            if element.text is not None:
+                output += str(element.text)
+            if element.tail is not None:
+                output += str(element.tail)
+            output = iterate_elements(element, output, depth)
+        elif element.tag == '{http://beatniksoftware.com/tomboy}italic':
+            output += format_text(element, '//')
+        elif element.tag == '{http://beatniksoftware.com/tomboy}bold':
+            output += format_text(element, '**')
+        elif element.tag == '{http://beatniksoftware.com/tomboy}strikethrough':
+            output += format_text(element, '~~')
+        elif element.tag == '{http://beatniksoftware.com/tomboy}highlight':
+            output += format_text(element, '__')
+        elif element.tag == '{http://beatniksoftware.com/tomboy}monospace':
+            output += format_text(element, "''")
+        elif element.tag == '{http://beatniksoftware.com/tomboy}underline':
+            # no underline
+            output += format_text(element)
+        elif element.tag == '{http://beatniksoftware.com/tomboy/link}internal':
+            if element.text is not None:
+                output += "[[" + str(element.text) + "]]"
+            if element.tail is not None:
+                output += str(element.tail)
+        elif element.tag == '{http://beatniksoftware.com/tomboy/link}broken':
+            if element.text is not None:
+                output += "[[" + str(element.text) + "]]"
+            if element.tail is not None:
+                output += str(element.tail)
+        elif element.tag == '{http://beatniksoftware.com/tomboy/link}url':
+            output += format_text(element)
+        elif '{http://beatniksoftware.com/tomboy/size}' in element.tag:
+            # we don't do anything with size
+            output += format_text(element)
+        else:
+            print("  WARNING: Unknown/unsupported tag in source note: '" + element.tag + "'\n")
+            output += format_text(element)
+
+    return output
+
+
+def format_text(element,formatter=""):
+    output = ""
+    
+    if element.text is not None and element.text != "":
+        output = formatter + str(element.text) + formatter
+        
+    if element.tail is not None and element.text != "":
+        output += str(element.tail)
+    
+    return output
 
 main()

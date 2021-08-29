@@ -2,18 +2,25 @@
 
 Convert Tomboy / Gnote notes to zim notes
 
+This is a version by Tim Jackson, substantially rewritten from earlier versions
+by Bengt J. Olsson and Osamu Aoki. Amongst other benefits, it supports nested 
+lists. (Internally, it uses an XML processer to parse the source notes
+"properly" rather than converting them using regular expressions.)
+
+## Requirements
+Python 3.
+
 ## Usage
 
-In an empty target directory, execute following while typing RETURN-key at each
-prompt.
+Execute the following:
 
 ```
- $ prthon3 /path/to/tzim.py
+ $ python3 /path/to/tzim.py --source-dir=[TOMBOY/GNOTE DIR] --dest-dir=[ZIM DIR]
 ```
 
-If you need non-default behavior, enter pertinent path to the prompt.
-
-This converts Tomboy / Gnote notes under a single target directory.
+This converts Tomboy / Gnote notes from TOMBODY/GNOTE DIR and puts the result in
+ZIM DIR. Notes that are tagged with a label will be put in a subdirectory of
+ZIM DIR.
 
 You can import each page to `zim` one by one via `File` -> `Import page...`.
 
@@ -41,31 +48,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
   * Copyright 2007,2008 Bengt J. Olsson
   * Copyright 2020      Osamu Aoki
+  * Copyright 2021      Tim Jackson <tim@timj.co.uk>
 
 ## Repository
 
-This python3 code is hosted at: https://github.com/osamuaoki/tzim
+This python3 code is hosted at: https://github.com/timjackson/tzim
 
+It is a mostly rewritten version of the code hosted at:
+ https://github.com/osamuaoki/tzim
 
-## Changes
-
-* Rev:      1.2.1-oa01
-  * Date:     2020-06-13  (OA)
-  * Changes:  Updated to python3 and adjust default behavior to modern path choices
-    (original from https://github.com/jaap-karssenberg/zim-wiki/wiki/Tomboy-import-script)
-    (original upstream URL http://blafs.com/diverse.html was unreachable)
-* Rev:      1.2.1
-  * Date:     2008-03-25
-  * Changes:  Corrected typo in dialog. Translates tomboy's monospace to zim verbatim
-* Rev:      1.2
-  * Date:     2008-03-24
-  * Changes:  Much revised code. Should be more robust against Tomboy note format now. Also added
-          support for the new "Notebooks" concept (i.e. two-level name-spaces)
-* Rev:      1.1
-  * Date:     2008-03-08
-  * Changes:  Fixed an issue when Create date on tomboy note does not exist. Now displays both
-          "Last changed" and "Create date" (if these exists) and conversion date. Fixed
-          various issues with that could hang the script. Added a few character subs.
-* Rev:      1.0
-  * Date:     2007-07-28
-  * Changes:  First version
