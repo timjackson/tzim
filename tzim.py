@@ -31,6 +31,8 @@ def main():
     parser = argparse.ArgumentParser(description='Convert Gnote/Tomboy notes to Zim')
     parser.add_argument('--source-dir', help='Gnote/Tomboy source directory', required=True)
     parser.add_argument('--dest-dir', help='Zim destination directory', required=True)
+    parser.add_argument('--migrate-broken-links', action='store_const', help='Whether to create links in Zim where links are broken in Gnote/Tomboy', default=False, const=True)
+    global args
     args = parser.parse_args()
 
     # Fix up source/dest paths
@@ -193,7 +195,10 @@ def iterate_elements(e, output="", depth=0):
                 output += str(element.tail)
         elif element.tag == '{http://beatniksoftware.com/tomboy/link}broken':
             if element.text is not None:
-                output += "[[" + str(element.text) + "]]"
+                if args.migrate_broken_links is True:
+                    output += "[[" + str(element.text) + "]]"
+                else:
+                    output += str(element.text)
             if element.tail is not None:
                 output += str(element.tail)
         elif element.tag == '{http://beatniksoftware.com/tomboy/link}url':
