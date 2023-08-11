@@ -17,7 +17,7 @@
 #
 # Copyright 2007,2008 Bengt J. Olsson 
 # Copyright 2020      Osamu Aoki
-# Copyright 2021      Tim Jackson
+# Copyright 2023      Tim Jackson
 
 import os
 import os.path
@@ -95,6 +95,8 @@ def main():
                 text = parse_content(element)
             elif element.tag == '{http://beatniksoftware.com/tomboy}title':
                 title = element.text
+                title = re.sub("^\((.+)\)$", "\\1", title)  # "(foo)" -> "foo" (title not valid if starting with parenthesis)
+                title = re.sub("^[/&<>:; %\(\)\"\*]+", "", title)  # considered invalid title; see zim/notebook/page.py
             elif element.tag == '{http://beatniksoftware.com/tomboy}last-change-date':
                 last_change_date = element.text
                 match = re.search(r'(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})', last_change_date)
