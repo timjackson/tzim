@@ -69,6 +69,7 @@ def main():
     errors = 0
     for file in files:
         print("Converting: ", os.path.basename(file))
+        is_error = False
     
         infile = open(file, "r")
         longline = infile.read()
@@ -80,10 +81,8 @@ def main():
         except:
             print("  ERROR: Could not parse note (invalid file?)")
             errors += 1
-        
-        if root.attrib['version'] not in ["0.2", "0.3"]:
-            print("  WARNING: only tested with Tomboy note version 0.2 and 0.3 (found " + root.attrib['version'] +")")
-        
+            is_error = True
+
         text = ''
         title = 'Untitled'
         last_change_date = 'Not found'
@@ -91,66 +90,75 @@ def main():
         create_date_orig = False
         folder = ''
         
-        for element in root:
-            if element.tag == '{http://beatniksoftware.com/tomboy}text':
-                text = parse_content(element)
-            elif element.tag == '{http://beatniksoftware.com/tomboy}title':
-                title = element.text
-                title = re.sub("^\((.+)\)$", "\\1", title)  # "(foo)" -> "foo" (title not valid if starting with parenthesis)
-                title = re.sub("^[/&<>:; %\(\)\"\*]+", "", title)  # considered invalid title; see zim/notebook/page.py
-            elif element.tag == '{http://beatniksoftware.com/tomboy}last-change-date':
-                last_change_date = element.text
-                match = re.search(r'(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})', last_change_date)
-                if match:
-                    last_change_date = match.group(1) + " " + match.group(2)
-            elif element.tag == '{http://beatniksoftware.com/tomboy}create-date':
-                create_date = element.text
-                create_date_orig = create_date
-                match = re.search(r'(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})', create_date)
-                if match:
-                    create_date = match.group(1) + " " + match.group(2)
-            elif element.tag == '{http://beatniksoftware.com/tomboy}tags':
-                tag = element.find('.//{http://beatniksoftware.com/tomboy}tag')
-                if tag is not None:
-                    match = re.search("system:notebook:(.+)$", str(tag.text), re.S)
+        if is_error == False:
+            if root.attrib['version'] not in ["0.2", "0.3"]:
+                print("  WARNING: only tested with Tomboy note version 0.2 and 0.3 (found " + root.attrib['version'] +")")
+
+            for element in root:
+                if element.tag == '{http://beatniksoftware.com/tomboy}text':
+                    text = parse_content(element)
+                elif element.tag == '{http://beatniksoftware.com/tomboy}title':
+                    title = element.text
+                    title = re.sub("^\((.+)\)$", "\\1", title)  # "(foo)" -> "foo" (title not valid if starting with parenthesis)
+                    title = re.sub("^[/&<>:; %\(\)\"\*]+", "", title)  # considered invalid title; see zim/notebook/page.py
+                elif element.tag == '{http://beatniksoftware.com/tomboy}last-change-date':
+                    last_change_date = element.text
+                    match = re.search(r'(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})', last_change_date)
                     if match:
-                        folder = match.group(1)      
-                        print(" Filing in folder: " + folder)
-                    else:
-                        # might be system:template
-                        pass
+                        last_change_date = match.group(1) + " " + match.group(2)
+                elif element.tag == '{http://beatniksoftware.com/tomboy}create-date':
+                    create_date = element.text
+                    create_date_orig = create_date
+                    match = re.search(r'(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})', create_date)
+                    if match:
+                        create_date = match.group(1) + " " + match.group(2)
+                elif element.tag == '{http://beatniksoftware.com/tomboy}tags':
+                    tag = element.find('.//{http://beatniksoftware.com/tomboy}tag')
+                    if tag is not None:
+                        match = re.search("system:notebook:(.+)$", str(tag.text), re.S)
+                        if match:
+                            folder = match.group(1)      
+                            print(" Filing in folder: " + folder)
+                        else:
+                            # might be system:template
+                            pass
 
-        if title == "Untitled":
-            print ("  ERROR: Could not find note title")
-            sys.exit()
+            if title == "Untitled":
+                print ("  ERROR: Could not find note title")
+                errors += 1
+                is_error = True
 
-        # Put together Zim note
-        outname = title
-        outname = re.sub("[/&<>:; \(\)\"]", "_", outname)  # removing "dangerous" chars
-        outname = re.sub("^_", "", outname)
-        outname = re.sub("_$", "", outname)
-        outname = re.sub("_+", "_", outname)
-        outname += ".txt"
-        if folder != "":
-            if not os.path.exists(folder):
-                os.mkdir(folder)
-            outname = folder + "/" + outname
-        outfile = open(outname, "w")
+        if is_error == False:
+            # Put together Zim note filename
+            outname = title
+            outname = re.sub("[/&<>:; \(\)\"]", "_", outname)  # removing "dangerous" chars
+            outname = re.sub("^_", "", outname)
+            outname = re.sub("_$", "", outname)
+            outname = re.sub("_+", "_", outname)
+            outname += ".txt"
+            out_full_filename = outname
+            if folder != "":
+                if not os.path.exists(folder):
+                    os.mkdir(folder)
+                out_full_filename = folder + "/" + outname
+            if os.path.exists(out_full_filename):
+                print("Warning: output file already exists; overwriting: " + out_full_filename)
+            outfile = open(out_full_filename, "w")
 
-        # Note content
-        line  = "Content-Type: text/x-zim-wiki" + "\n"
-        line += "Wiki-Format: zim 0.6" + "\n"
-        if create_date_orig != False:
-            # the format of this is possibly not exactly the same as Zim uses, but it seems to parse
-            line += "Creation-Date: " + create_date_orig + "\n"
-        line += "\n"
-        line += "====== " + title + " ======" + "\n"
-        line += text + "\n"
-        line += "\n" + "Last changed (in Tomboy/Gnote): " + last_change_date + "\n"
-        line += "Note created (in Tomboy/Gnote): " + create_date + "\n"
+            # Note content
+            line  = "Content-Type: text/x-zim-wiki" + "\n"
+            line += "Wiki-Format: zim 0.6" + "\n"
+            if create_date_orig != False:
+                # the format of this is possibly not exactly the same as Zim uses, but it seems to parse
+                line += "Creation-Date: " + create_date_orig + "\n"
+            line += "\n"
+            line += "====== " + title + " ======" + "\n"
+            line += text + "\n"
+            line += "\n" + "Last changed (in Tomboy/Gnote): " + last_change_date + "\n"
+            line += "Note created (in Tomboy/Gnote): " + create_date + "\n"
 
-        outfile.write(line)
-        outfile.close()
+            outfile.write(line)
+            outfile.close()
     print("\nConversion complete (with " + str(errors) + " error(s))")
     
     os.chdir(curdir)
