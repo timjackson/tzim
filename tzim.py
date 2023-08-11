@@ -88,6 +88,7 @@ def main():
         title = 'Untitled'
         last_change_date = 'Not found'
         create_date = 'Not found'
+        create_date_orig = False
         folder = ''
         
         for element in root:
@@ -104,6 +105,7 @@ def main():
                     last_change_date = match.group(1) + " " + match.group(2)
             elif element.tag == '{http://beatniksoftware.com/tomboy}create-date':
                 create_date = element.text
+                create_date_orig = create_date
                 match = re.search(r'(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})', create_date)
                 if match:
                     create_date = match.group(1) + " " + match.group(2)
@@ -134,10 +136,19 @@ def main():
                 os.mkdir(folder)
             outname = folder + "/" + outname
         outfile = open(outname, "w")
-        line = "====== " + title + " ======" + "\n"
+
+        # Note content
+        line  = "Content-Type: text/x-zim-wiki" + "\n"
+        line += "Wiki-Format: zim 0.6" + "\n"
+        if create_date_orig != False:
+            # the format of this is possibly not exactly the same as Zim uses, but it seems to parse
+            line += "Creation-Date: " + create_date_orig + "\n"
+        line += "\n"
+        line += "====== " + title + " ======" + "\n"
         line += text + "\n"
         line += "\n" + "Last changed (in Tomboy/Gnote): " + last_change_date + "\n"
         line += "Note created (in Tomboy/Gnote): " + create_date + "\n"
+
         outfile.write(line)
         outfile.close()
     print("\nConversion complete (with " + str(errors) + " error(s))")
