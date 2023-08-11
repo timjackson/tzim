@@ -124,8 +124,11 @@ def main():
 
         # Put together Zim note
         outname = title
-        outname = re.sub("[/&<>:; ]", "_", outname)  # removing "dangerous" chars
-        outname += ".txt"  # Zim file name for note
+        outname = re.sub("[/&<>:; \(\)\"]", "_", outname)  # removing "dangerous" chars
+        outname = re.sub("^_", "", outname)
+        outname = re.sub("_$", "", outname)
+        outname = re.sub("_+", "_", outname)
+        outname += ".txt"
         if folder != "":
             if not os.path.exists(folder):
                 os.mkdir(folder)
